@@ -21,6 +21,7 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import com.jakewharton.rxbinding2.widget.RxTextView;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;
@@ -31,8 +32,11 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import butterknife.ButterKnife;
 import butterknife.InjectView;
+import io.reactivex.Observable;
 
 public class MainActivity extends AppCompatActivity {
+    private static String TAG = MainActivity.class.getCanonicalName();
+
     OkHttpClient client = new OkHttpClient();
 
     @InjectView(R.id.text1) EditText mEditText;
@@ -78,7 +82,6 @@ public class MainActivity extends AppCompatActivity {
             mTextView.append(s);
         }
     }
-private static String TAG = EmbedAdapter.class.getCanonicalName();
 
     private class EditTextChangedListener implements TextWatcher {
         @Override
@@ -113,19 +116,25 @@ private static String TAG = EmbedAdapter.class.getCanonicalName();
         mRecyclerView.setLayoutManager(
                   new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
           mRecyclerView.setAdapter(mAdapter);
-//        registerForContextMenu(mEditText);
-//        mEditText.setMovementMethod(LinkMovementMethod.getInstance());
         mEditText.addTextChangedListener(new EditTextChangedListener());
-//        mEditText.setMovementMethod(new ScrollingMovementMethod());
         mTextView.setMovementMethod(new ScrollingMovementMethod());
+
+        Observable<FindLinkEvent> findLinkEvents = RxTextView.afterTextChangeEvents(mEditText)
+                .map(text -> new FindLinkEvent(text));
+
+        Observable<FindLinkResult> results;
+
+        PostUiModel initialState = PostUiModel.idle();
+        Observable<PostUiModel> uiModels = results
+                .scan(initialState, (state, result) -> {
+                    if (result == )
+                });
     }
 
 
     @Override
     public void onResume() {
         super.onResume();
-        String url = "https://cooking.nytimes.com/recipes/1018669-easter-egg-nest-cake";
-//        new NetworkTask().execute(url);
     }
 
     @Override

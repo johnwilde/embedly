@@ -24,6 +24,10 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    compileOptions {
+        targetCompatibility 1.8
+        sourceCompatibility 1.8
+    }
 }
 
 dependencies {
@@ -41,4 +45,5 @@ dependencies {
     compile 'com.squareup.okio:okio:1.0.1'
     compile 'com.jakewharton:butterknife:5.1.1'
     compile "com.android.support:recyclerview-v7:${supportLibVersion}"
+    compile 'com.jakewharton.rxbinding2:rxbinding:2.0.0'
 }
