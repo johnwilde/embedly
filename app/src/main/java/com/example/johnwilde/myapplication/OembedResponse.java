@@ -5,7 +5,7 @@ package com.example.johnwilde.myapplication;
  */
 
 public class OembedResponse {
-    String thumbnailUrl;
+    String thumbnail_url;
     String title;
     String description;
 }

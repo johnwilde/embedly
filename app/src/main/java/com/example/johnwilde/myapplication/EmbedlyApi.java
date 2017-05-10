@@ -10,7 +10,7 @@ import retrofit2.http.Query;
  */
 
 public interface EmbedlyApi {
-    @GET("1/oembed.json")
+    @GET("1/oembed")
     Observable<OembedResponse> getUrl(
             @Query("key") String key,
             @Query("url") String url);

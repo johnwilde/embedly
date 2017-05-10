@@ -1,13 +1,14 @@
 package com.example.johnwilde.myapplication;
 
+import android.text.style.URLSpan;
+import android.text.util.Linkify;
+
 import com.jakewharton.rxbinding2.widget.TextViewAfterTextChangeEvent;
 
-/**
- * Created by johnwilde on 5/8/17.
- */
-
 public class FindLinkEvent extends PostUiEvent {
-    String mText;
+    URLSpan spans[];
     public FindLinkEvent(TextViewAfterTextChangeEvent event) {
+        Linkify.addLinks(event.view(), Linkify.WEB_URLS);
+        spans = event.view().getUrls();
     }
 }

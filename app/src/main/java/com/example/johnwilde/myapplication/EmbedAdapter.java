@@ -3,7 +3,6 @@ package com.example.johnwilde.myapplication;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.net.Uri;
 import android.os.AsyncTask;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.RecyclerView.ViewHolder;
@@ -18,9 +17,6 @@ import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +28,7 @@ public class EmbedAdapter extends RecyclerView.Adapter<ViewHolder> {
     private Context mContext;
     OkHttpClient client = new OkHttpClient();
 
-    private List<JSONObject> mList = new ArrayList<>();
+    private List<OembedResponse> mList = new ArrayList<>();
     EmbedAdapter(Context context) {
         mContext = context;
     }
@@ -91,15 +87,10 @@ public class EmbedAdapter extends RecyclerView.Adapter<ViewHolder> {
             ButterKnife.inject(this, view);
         }
 
-        void bindData(JSONObject object) {
-            try {
-                String url = object.get("thumbnail_url").toString();
-                new DownloadImageTask(mImage).execute(url);
-                mTitle.setText(object.getString("title"));
-                mDescription.setText(object.getString("description"));
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
+        void bindData(OembedResponse response) {
+            new DownloadImageTask(mImage).execute(response.thumbnail_url);
+            mTitle.setText(response.title);
+            mDescription.setText(response.description);
         }
     }
     @Override
@@ -109,13 +100,8 @@ public class EmbedAdapter extends RecyclerView.Adapter<ViewHolder> {
         return new EmbedViewHolder(view);
     }
 
-    public void add(String s) {
-        try {
-            JSONObject object = new JSONObject(s);
-            mList.add(object);
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
+    public void add(OembedResponse response) {
+        mList.add(response);
     }
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {

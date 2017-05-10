@@ -1,16 +1,21 @@
 package com.example.johnwilde.myapplication;
 
-/**
- * Created by johnwilde on 5/9/17.
- */
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class FindLinkAction extends PostAction {
+    static Map<String, String> mUrlMap = new ConcurrentHashMap<>();
+
     String mUrl;
     private FindLinkAction(String url) {
         mUrl = url;
     }
     static FindLinkAction findLink(String url) {
+        mUrlMap.put(url, "search");
         return  new FindLinkAction(url);
+    }
+    static boolean foundUrl(String url) {
+        return mUrlMap.containsKey(url);
     }
     String getUrl() {
         return mUrl;

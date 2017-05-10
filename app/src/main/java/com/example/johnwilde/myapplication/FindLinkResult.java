@@ -1,13 +1,8 @@
 package com.example.johnwilde.myapplication;
 
-import com.squareup.okhttp.Response;
-
-/**
- * Created by johnwilde on 5/8/17.
- */
-
 public final class FindLinkResult extends PostResult {
     OembedResponse mResponse;
+    String mUrl;
     private FindLinkResult(Status status) {
         mStatus = status;
     }
@@ -15,8 +10,10 @@ public final class FindLinkResult extends PostResult {
         mStatus = status;
         mResponse = response;
     }
-    static FindLinkResult inFlight() {
-        return new FindLinkResult(Status.IN_FLIGHT);
+    static FindLinkResult inFlight(String url) {
+        FindLinkResult result = new FindLinkResult(Status.IN_FLIGHT);
+        result.mUrl = url;
+        return result;
     }
     static FindLinkResult success(OembedResponse response) {
         return new FindLinkResult(Status.SUCCESS, response);
