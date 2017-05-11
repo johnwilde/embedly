@@ -23,6 +23,7 @@ public final class PostUiModel {
     }
     public static PostUiModel inProgress(PostUiModel start, String url) {
         start.mState = IN_PROGRESS;
+        start.mUrl = url;
         start.mUrlMap.put(url, new OembedResponse());
         return start;
     }

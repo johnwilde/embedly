@@ -10,9 +10,11 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.jakewharton.rxbinding2.view.RxView;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;
@@ -23,12 +25,21 @@ import java.util.List;
 
 import butterknife.ButterKnife;
 import butterknife.InjectView;
+import io.reactivex.Observable;
+import io.reactivex.subjects.PublishSubject;
 
 public class EmbedAdapter extends RecyclerView.Adapter<ViewHolder> {
     private Context mContext;
     OkHttpClient client = new OkHttpClient();
 
+    private PublishSubject<View> mViewClickSubject = PublishSubject.create();
+
+    public Observable<View> getViewClickedObservable() {
+        return mViewClickSubject;
+    }
+
     private List<OembedResponse> mList = new ArrayList<>();
+
     EmbedAdapter(Context context) {
         mContext = context;
     }
@@ -82,27 +93,45 @@ public class EmbedAdapter extends RecyclerView.Adapter<ViewHolder> {
         @InjectView(R.id.description)
         TextView mDescription;
 
+        @InjectView(R.id.close_button)
+        Button mButton;
+
         EmbedViewHolder(View view) {
             super(view);
             ButterKnife.inject(this, view);
         }
 
         void bindData(OembedResponse response) {
-            new DownloadImageTask(mImage).execute(response.thumbnail_url);
+            String url = response.thumbnail_url;
+            if (url != null) {
+                new DownloadImageTask(mImage).execute(url);
+            }
             mTitle.setText(response.title);
             mDescription.setText(response.description);
         }
     }
+
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         LayoutInflater inflater = LayoutInflater.from(mContext);
         View view = inflater.inflate(R.layout.embed, parent, false);
-        return new EmbedViewHolder(view);
+        EmbedViewHolder viewHolder = new EmbedViewHolder(view);
+        RxView.clicks(viewHolder.mButton)
+                .takeUntil(RxView.detaches(parent))
+                .map(aVoid -> view)
+                .subscribe(mViewClickSubject);
+
+        return viewHolder;
     }
 
     public void add(OembedResponse response) {
         mList.add(response);
     }
+
+    public void remove(OembedResponse response) {
+        mList.remove(response);
+    }
+
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
         ((EmbedViewHolder) holder).bindData(mList.get(position));

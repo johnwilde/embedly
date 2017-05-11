@@ -1,5 +1,7 @@
 package com.example.johnwilde.myapplication;
 
+import android.view.View;
+
 import com.jakewharton.rxbinding2.widget.TextViewAfterTextChangeEvent;
 
 /**
@@ -8,7 +10,7 @@ import com.jakewharton.rxbinding2.widget.TextViewAfterTextChangeEvent;
 
 public class CollapseLinkEvent extends PostUiEvent {
     String mString;
-    public CollapseLinkEvent(TextViewAfterTextChangeEvent event) {
-        mString = event.editable().toString();
+    public CollapseLinkEvent(Object view) {
+        mString = "nothing";
     }
 }

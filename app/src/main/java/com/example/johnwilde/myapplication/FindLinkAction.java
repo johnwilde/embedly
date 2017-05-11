@@ -12,7 +12,7 @@ public class FindLinkAction extends PostAction {
     }
     static FindLinkAction findLink(String url) {
         mUrlMap.put(url, "search");
-        return  new FindLinkAction(url);
+        return new FindLinkAction(url);
     }
     static boolean foundUrl(String url) {
         return mUrlMap.containsKey(url);

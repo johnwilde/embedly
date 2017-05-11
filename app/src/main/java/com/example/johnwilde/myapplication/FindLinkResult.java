@@ -15,8 +15,10 @@ public final class FindLinkResult extends PostResult {
         result.mUrl = url;
         return result;
     }
-    static FindLinkResult success(OembedResponse response) {
-        return new FindLinkResult(Status.SUCCESS, response);
+    static FindLinkResult success(OembedResponse response, String url) {
+        FindLinkResult result = new FindLinkResult(Status.SUCCESS, response);
+        result.mUrl = url;
+        return result;
     }
     static FindLinkResult failure() {
         return new FindLinkResult(Status.INVALID);
