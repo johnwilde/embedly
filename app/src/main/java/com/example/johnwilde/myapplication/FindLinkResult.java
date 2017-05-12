@@ -11,12 +11,12 @@ public final class FindLinkResult extends PostResult {
         mResponse = response;
     }
     static FindLinkResult inFlight(String url) {
-        FindLinkResult result = new FindLinkResult(Status.IN_FLIGHT);
+        FindLinkResult result = new FindLinkResult(Status.EMBED_REQUEST_IN_FLIGHT);
         result.mUrl = url;
         return result;
     }
     static FindLinkResult success(OembedResponse response, String url) {
-        FindLinkResult result = new FindLinkResult(Status.SUCCESS, response);
+        FindLinkResult result = new FindLinkResult(Status.EXPAND_LINK, response);
         result.mUrl = url;
         return result;
     }

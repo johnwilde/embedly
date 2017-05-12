@@ -5,7 +5,7 @@ package com.example.johnwilde.myapplication;
  */
 
 public class PostResult {
-    enum Status {IDLE, COLLAPSE_LINK, IN_FLIGHT, ERROR_EXPANDING_LINK, SUCCESS }
+    enum Status {IDLE, COLLAPSE_LINK, EMBED_REQUEST_IN_FLIGHT, ERROR_EXPANDING_LINK, EXPAND_LINK}
     Status mStatus;
 
 }

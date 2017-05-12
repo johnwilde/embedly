@@ -16,8 +16,6 @@ import com.jakewharton.retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 import com.jakewharton.rxbinding2.widget.RxTextView;
 import com.squareup.okhttp.OkHttpClient;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import butterknife.ButterKnife;
@@ -42,111 +40,7 @@ public class MainActivity extends AppCompatActivity {
     @InjectView(R.id.recyclerView) RecyclerView mRecyclerView;
     @InjectView(R.id.text2) TextView mTextView;
 
-    private Map<String, String> mUrlMap = new ConcurrentHashMap<>();
     private EmbedAdapter mAdapter;
-
-    private Observable<PostUiEvent> getUiEventSequence() {
-        // Streams of UI events
-        Observable<FindLinkEvent> findLinkEvents = RxTextView.afterTextChangeEvents(mEditText)
-                .map(text -> new FindLinkEvent(text));
-        Observable<CollapseLinkEvent> collapseLinkEvents = mAdapter.getViewClickedObservable()
-                .map(view -> new CollapseLinkEvent(view));
-        Observable<PostUiEvent> uiEvents
-                = Observable.merge(findLinkEvents, collapseLinkEvents);
-        return uiEvents;
-    }
-
-    private ObservableTransformer<PostUiEvent, PostAction> getActionTransformer() {
-        // Transform UI events to single stream of Actions
-       ObservableTransformer<FindLinkEvent, FindLinkAction> findLinkActions =
-               actions -> actions
-                       .flatMap(event -> Observable.fromArray(event.spans))
-                       .filter(span -> !FindLinkAction.foundUrl(span.getURL()))
-                       .map(span -> FindLinkAction.findLink(span.getURL()));
-       ObservableTransformer<CollapseLinkEvent, CollapseLinkAction> collapseLinkAction =
-               actions -> actions.map(event -> {
-                   EmbedViewHolder vh = (EmbedViewHolder) mRecyclerView.getChildViewHolder(event.mView);
-                   return CollapseLinkAction.collapseLink(vh.mUrl);
-               });
-       ObservableTransformer<PostUiEvent, PostAction> postActions
-               = events -> events.publish(shared -> Observable.merge(
-                       shared.ofType(FindLinkEvent.class).compose(findLinkActions),
-                       shared.ofType(CollapseLinkEvent.class).compose(collapseLinkAction)
-                       ));
-        return postActions;
-    }
-
-    private ObservableTransformer<PostAction, PostResult> getResultTransformer() {
-        Retrofit retrofit = new Builder()
-                .baseUrl("http://api.embedly.com/")
-                .addConverterFactory(GsonConverterFactory.create())
-                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
-                .build();
-        // Retrofit instance which was created earlier
-        EmbedlyApi embedlyApi = retrofit.create(EmbedlyApi.class);
-
-        // Transform Actions to Results
-       ObservableTransformer<FindLinkAction, FindLinkResult> findLink =
-               actions -> actions
-                       .delay(200, TimeUnit.MILLISECONDS, AndroidSchedulers.mainThread())
-                       .observeOn(Schedulers.io())
-                       .switchMap(action ->
-                           embedlyApi.getUrl(BuildConfig.EMBEDLY_API_KEY, action.getUrl())
-                                   .map(response -> Pair.create(response, action.getUrl()))
-                       )
-                       .map(pair -> FindLinkResult.success(pair.first, pair.second))
-                       .onErrorReturn(t -> FindLinkResult.failure())
-                       .observeOn(AndroidSchedulers.mainThread());
-        ObservableTransformer<FindLinkAction, FindLinkResult> inProgress =
-                actions -> actions
-                        .delay(200, TimeUnit.MILLISECONDS, AndroidSchedulers.mainThread())
-                        .map(action -> FindLinkResult.inFlight(action.getUrl()))
-                        .observeOn(AndroidSchedulers.mainThread());
-       ObservableTransformer<CollapseLinkAction, CollapseLinkResult> collapse =
-               actions -> actions
-                           .map(action -> CollapseLinkResult.collapse(action))
-                           .observeOn(AndroidSchedulers.mainThread())
-                           .startWith(CollapseLinkResult.idle());
-
-       ObservableTransformer<PostAction, PostResult> postResults
-               = events -> events.publish(shared -> Observable.merge(
-                       shared.ofType(FindLinkAction.class).compose(findLink),
-                       shared.ofType(FindLinkAction.class).compose(inProgress),
-                       shared.ofType(CollapseLinkAction.class).compose(collapse)
-               ));
-        return postResults;
-    }
-
-    Observable<PostUiModel> getUiModelSequence() {
-
-        PostUiModel initialState = PostUiModel.idle();
-        Observable<PostUiModel> uiModels =
-                getUiEventSequence()
-                .observeOn(AndroidSchedulers.mainThread())
-                .compose(getActionTransformer())
-                .compose(getResultTransformer())
-                .scan(initialState, (state, result) -> {
-                    if (result.mStatus == Status.IN_FLIGHT) {
-                        if (result instanceof FindLinkResult) {
-                            FindLinkResult result1 = (FindLinkResult) result;
-                            return PostUiModel.inProgress(state, result1.mUrl);
-                        }
-                    }
-                    if (result.mStatus == Status.SUCCESS) {
-                        FindLinkResult result1 = (FindLinkResult) result;
-                        return PostUiModel.expandLink(state, result1.mUrl, result1.mResponse);
-                    }
-                    if (result.mStatus == Status.COLLAPSE_LINK) {
-                        CollapseLinkResult collapseLinkResult = (CollapseLinkResult) result;
-                        return PostUiModel.collapseLink(state, collapseLinkResult);
-                    }
-                    if (result.mStatus == Status.ERROR_EXPANDING_LINK) {
-                        return PostUiModel.errorExpandingLink(state);
-                    }
-                    return state;
-                });
-        return uiModels;
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -195,5 +89,117 @@ public class MainActivity extends AppCompatActivity {
       if (!mDisposable.isDisposed()) {
         mDisposable.dispose();
       }
+    }
+
+
+    private Observable<PostUiModel> getUiModelSequence() {
+
+        PostUiModel initialState = PostUiModel.idle();
+        Observable<PostUiModel> uiModels = getUiEventSequence()
+            .observeOn(AndroidSchedulers.mainThread())
+            .compose(getActionTransformer()) // Transform Events into Actions
+            .compose(getResultTransformer()) // Transform Actions into Results
+            .scan(initialState, (state, result) -> { // Transform Results into UiModels
+                if (result.mStatus == Status.EMBED_REQUEST_IN_FLIGHT) {
+                    FindLinkResult findLink = (FindLinkResult) result;
+                    return PostUiModel.inProgress(state, findLink.mUrl);
+                }
+                if (result.mStatus == Status.EXPAND_LINK) {
+                    FindLinkResult findLink = (FindLinkResult) result;
+                    return PostUiModel.expandLink(state, findLink.mUrl, findLink.mResponse);
+                }
+                if (result.mStatus == Status.COLLAPSE_LINK) {
+                    CollapseLinkResult collapseLinkResult = (CollapseLinkResult) result;
+                    return PostUiModel.collapseLink(state, collapseLinkResult);
+                }
+                if (result.mStatus == Status.ERROR_EXPANDING_LINK) {
+                    return PostUiModel.errorExpandingLink(state);
+                }
+                return state;
+            });
+        return uiModels;
+    }
+
+    private Observable<PostUiEvent> getUiEventSequence() {
+        // Streams of UI events
+        Observable<FindLinkEvent> findLinkEvents = RxTextView.afterTextChangeEvents(mEditText)
+                .map(text -> new FindLinkEvent(text));
+        // The adapter passes along clicks on any collapse button, with a reference to the
+        // child view that was clicked
+        Observable<CollapseLinkEvent> collapseLinkEvents = mAdapter.getViewClickedObservable()
+                .map(view -> new CollapseLinkEvent(view));
+        // Merge into a single stream
+        Observable<PostUiEvent> uiEvents = Observable.merge(findLinkEvents, collapseLinkEvents);
+        return uiEvents;
+    }
+
+    private ObservableTransformer<PostUiEvent, PostAction> getActionTransformer() {
+        // Turn stream of text change events into a stream of FindLinkActions. Each action is
+        // an URL to look up with embedly
+        ObservableTransformer<FindLinkEvent, FindLinkAction> findLinkActions =
+            actions -> actions
+                    .flatMap(event -> Observable.fromArray(event.spans))
+                    .filter(span -> !FindLinkAction.foundUrl(span.getURL()))
+                    .map(span -> FindLinkAction.findLink(span.getURL()));
+
+        // Turn stream of collapse events into actions, the URL was saved in the view holder
+        ObservableTransformer<CollapseLinkEvent, CollapseLinkAction> collapseLinkAction =
+            actions -> actions.map(clickEvent -> {
+               EmbedViewHolder vh =
+                       (EmbedViewHolder) mRecyclerView.getChildViewHolder(clickEvent.mView);
+               return CollapseLinkAction.collapseLink(vh.mUrl);
+            });
+
+        // Merge all  UI events to single stream of Actions
+        ObservableTransformer<PostUiEvent, PostAction> postActions =
+            events -> events.publish(shared -> Observable.merge(
+                   shared.ofType(FindLinkEvent.class).compose(findLinkActions),
+                   shared.ofType(CollapseLinkEvent.class).compose(collapseLinkAction)
+            ));
+        return postActions;
+    }
+
+    private ObservableTransformer<PostAction, PostResult> getResultTransformer() {
+        Retrofit retrofit = new Builder()
+                .baseUrl("http://api.embedly.com/")
+                .addConverterFactory(GsonConverterFactory.create())
+                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
+                .build();
+        EmbedlyApi embedlyApi = retrofit.create(EmbedlyApi.class);
+
+        // The result of a find link request is the embedly response, or a failure
+       ObservableTransformer<FindLinkAction, FindLinkResult> findLink =
+               actions -> actions
+                       .delay(200, TimeUnit.MILLISECONDS, AndroidSchedulers.mainThread())
+                       .observeOn(Schedulers.io())
+                       .switchMap(action ->
+                           embedlyApi.getUrl(BuildConfig.EMBEDLY_API_KEY, action.getUrl())
+                                   .map(response -> Pair.create(response, action.getUrl()))
+                       )
+                       .map(pair -> FindLinkResult.success(pair.first, pair.second))
+                       .onErrorReturn(t -> FindLinkResult.failure())
+                       .observeOn(AndroidSchedulers.mainThread());
+
+        // Also create the "in flight" result automatically (todo: is this right way to do this?)
+        ObservableTransformer<FindLinkAction, FindLinkResult> inProgress =
+                actions -> actions
+                        .delay(200, TimeUnit.MILLISECONDS, AndroidSchedulers.mainThread())
+                        .map(action -> FindLinkResult.inFlight(action.getUrl()))
+                        .observeOn(AndroidSchedulers.mainThread());
+
+        // The result of the collapse link action is just a copy of the action
+        ObservableTransformer<CollapseLinkAction, CollapseLinkResult> collapse =
+               actions -> actions
+                           .map(action -> CollapseLinkResult.collapse(action))
+                           .observeOn(AndroidSchedulers.mainThread());
+
+        // Merge all Actions into a sequence of Results
+        ObservableTransformer<PostAction, PostResult> postResults
+               = events -> events.publish(shared -> Observable.merge(
+                       shared.ofType(FindLinkAction.class).compose(findLink),
+                       shared.ofType(FindLinkAction.class).compose(inProgress),
+                       shared.ofType(CollapseLinkAction.class).compose(collapse)
+               ));
+        return postResults;
     }
 }
