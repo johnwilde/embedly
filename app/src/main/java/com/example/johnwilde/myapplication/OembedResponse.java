@@ -8,4 +8,6 @@ public class OembedResponse {
     String thumbnail_url;
     String title;
     String description;
+
+    String requestUrl;
 }

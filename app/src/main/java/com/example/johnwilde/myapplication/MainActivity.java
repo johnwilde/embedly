@@ -9,11 +9,10 @@ import android.util.Log;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import com.example.johnwilde.myapplication.EmbedAdapter.EmbedViewHolder;
 import com.example.johnwilde.myapplication.PostResult.Status;
 import com.example.johnwilde.myapplication.PostUiModel.State;
 import com.jakewharton.retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
-import com.jakewharton.rxbinding2.view.RxView;
-import com.jakewharton.rxbinding2.widget.RxAdapterView;
 import com.jakewharton.rxbinding2.widget.RxTextView;
 import com.squareup.okhttp.OkHttpClient;
 
@@ -65,7 +64,10 @@ public class MainActivity extends AppCompatActivity {
                        .filter(span -> !FindLinkAction.foundUrl(span.getURL()))
                        .map(span -> FindLinkAction.findLink(span.getURL()));
        ObservableTransformer<CollapseLinkEvent, CollapseLinkAction> collapseLinkAction =
-               actions -> actions.map(event -> CollapseLinkAction.expandLink(event.mString));
+               actions -> actions.map(event -> {
+                   EmbedViewHolder vh = (EmbedViewHolder) mRecyclerView.getChildViewHolder(event.mView);
+                   return CollapseLinkAction.collapseLink(vh.mUrl);
+               });
        ObservableTransformer<PostUiEvent, PostAction> postActions
                = events -> events.publish(shared -> Observable.merge(
                        shared.ofType(FindLinkEvent.class).compose(findLinkActions),
@@ -98,12 +100,11 @@ public class MainActivity extends AppCompatActivity {
         ObservableTransformer<FindLinkAction, FindLinkResult> inProgress =
                 actions -> actions
                         .delay(200, TimeUnit.MILLISECONDS, AndroidSchedulers.mainThread())
-                        .observeOn(Schedulers.io())
                         .map(action -> FindLinkResult.inFlight(action.getUrl()))
                         .observeOn(AndroidSchedulers.mainThread());
-       ObservableTransformer<CollapseLinkAction, CollapseLinkResult> expandLink =
+       ObservableTransformer<CollapseLinkAction, CollapseLinkResult> collapse =
                actions -> actions
-                           .map(action -> CollapseLinkResult.expand(action))
+                           .map(action -> CollapseLinkResult.collapse(action))
                            .observeOn(AndroidSchedulers.mainThread())
                            .startWith(CollapseLinkResult.idle());
 
@@ -111,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
                = events -> events.publish(shared -> Observable.merge(
                        shared.ofType(FindLinkAction.class).compose(findLink),
                        shared.ofType(FindLinkAction.class).compose(inProgress),
-                       shared.ofType(CollapseLinkAction.class).compose(expandLink)
+                       shared.ofType(CollapseLinkAction.class).compose(collapse)
                ));
         return postResults;
     }
@@ -136,7 +137,11 @@ public class MainActivity extends AppCompatActivity {
                         return PostUiModel.expandLink(state, result1.mUrl, result1.mResponse);
                     }
                     if (result.mStatus == Status.COLLAPSE_LINK) {
-                        return PostUiModel.collapseLink(state);
+                        CollapseLinkResult collapseLinkResult = (CollapseLinkResult) result;
+                        return PostUiModel.collapseLink(state, collapseLinkResult);
+                    }
+                    if (result.mStatus == Status.ERROR_EXPANDING_LINK) {
+                        return PostUiModel.errorExpandingLink(state);
                     }
                     return state;
                 });
@@ -162,7 +167,6 @@ public class MainActivity extends AppCompatActivity {
                 .subscribe(model -> {
             if (model.mState == State.IN_PROGRESS) {
                 Log.d(TAG, "IN_PROGRESS " + model.mUrl);
-//                mTextView.append(model.mUrlMap.keySet().toString());
             }
             if (model.mState == State.EXPAND_LINK) {
                 Log.d(TAG, "EXPAND_LINK " + model.mUrl);
@@ -170,8 +174,12 @@ public class MainActivity extends AppCompatActivity {
             }
             if (model.mState == State.COLLAPSE_LINK) {
                 Log.d(TAG, "COLLAPSE_LINK " + model.mUrl);
-                mAdapter.remove(model.getResponse());
+                mAdapter.remove(model.mUrl);
             }
+            if (model.mState == State.ERROR_EXPANDING_LINK) {
+                Log.d(TAG, "ERROR_EXPANDING_LINK " + model.mUrl);
+            }
+
         }, t -> { throw new OnErrorNotImplementedException(t);});
     }
 

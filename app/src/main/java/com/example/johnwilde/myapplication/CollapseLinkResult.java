@@ -10,7 +10,7 @@ public class CollapseLinkResult extends PostResult {
         mAction = action;
     }
 
-    static CollapseLinkResult expand(CollapseLinkAction action) {
+    static CollapseLinkResult collapse(CollapseLinkAction action) {
         return new CollapseLinkResult(Status.COLLAPSE_LINK, action);
     }
     static CollapseLinkResult idle() {

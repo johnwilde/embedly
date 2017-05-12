@@ -30,7 +30,6 @@ import io.reactivex.subjects.PublishSubject;
 
 public class EmbedAdapter extends RecyclerView.Adapter<ViewHolder> {
     private Context mContext;
-    OkHttpClient client = new OkHttpClient();
 
     private PublishSubject<View> mViewClickSubject = PublishSubject.create();
 
@@ -96,6 +95,8 @@ public class EmbedAdapter extends RecyclerView.Adapter<ViewHolder> {
         @InjectView(R.id.close_button)
         Button mButton;
 
+        String mUrl;
+
         EmbedViewHolder(View view) {
             super(view);
             ButterKnife.inject(this, view);
@@ -108,6 +109,7 @@ public class EmbedAdapter extends RecyclerView.Adapter<ViewHolder> {
             }
             mTitle.setText(response.title);
             mDescription.setText(response.description);
+            mUrl = response.requestUrl;
         }
     }
 
@@ -126,10 +128,17 @@ public class EmbedAdapter extends RecyclerView.Adapter<ViewHolder> {
 
     public void add(OembedResponse response) {
         mList.add(response);
+        notifyDataSetChanged();
     }
 
-    public void remove(OembedResponse response) {
-        mList.remove(response);
+    public void remove(String url) {
+        for (OembedResponse response : mList) {
+            if (response.requestUrl.equals(url)) {
+                mList.remove(response);
+                notifyDataSetChanged();
+                break;
+            }
+        }
     }
 
     @Override

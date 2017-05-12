@@ -21,7 +21,7 @@ public final class FindLinkResult extends PostResult {
         return result;
     }
     static FindLinkResult failure() {
-        return new FindLinkResult(Status.INVALID);
+        return new FindLinkResult(Status.ERROR_EXPANDING_LINK);
     }
 
 }
